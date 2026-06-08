@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+data/chat_history.db
+data/raw/
+data/cleaned/
+reports/final_report.html
+reports/sentiment_report.csv
+reports/menu_analysis.csv
+reports/menu_summary.csv
+reports/competitor_report.csv
+.DS_Store

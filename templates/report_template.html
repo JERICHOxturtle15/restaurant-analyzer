@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>餐厅智能分析报告</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:#f5f5f0;color:#333;line-height:1.6}
+header{background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff;padding:32px 48px}
+header h1{font-size:2rem;font-weight:700;margin-bottom:4px}
+header p{opacity:.85;font-size:.95rem}
+nav.toc{background:#fff;border-bottom:1px solid #e0e0e0;padding:12px 48px;display:flex;gap:24px;flex-wrap:wrap;font-size:.88rem;position:sticky;top:0;z-index:10}
+nav.toc a{color:#c0392b;text-decoration:none;font-weight:500}
+nav.toc a:hover{text-decoration:underline}
+main{max-width:1100px;margin:32px auto;padding:0 24px;display:flex;flex-direction:column;gap:32px}
+section{background:#fff;border-radius:8px;padding:28px 32px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+h2{font-size:1.25rem;font-weight:700;color:#c0392b;margin-bottom:18px;padding-bottom:10px;border-bottom:2px solid #fde8e8}
+h3{font-size:1rem;font-weight:600;margin:16px 0 8px;color:#555}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{background:#fde8e8;color:#c0392b;padding:10px 12px;text-align:left;font-weight:600}
+td{padding:9px 12px;border-bottom:1px solid #f0f0f0}
+tr:hover td{background:#fafafa}
+.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.78rem;font-weight:600}
+.badge-star{background:#fff3cd;color:#856404}
+.badge-plow{background:#d1ecf1;color:#0c5460}
+.badge-puzzle{background:#d4edda;color:#155724}
+.badge-dog{background:#f8d7da;color:#721c24}
+.badge-positive{background:#d4edda;color:#155724}
+.badge-negative{background:#f8d7da;color:#721c24}
+.badge-neutral{background:#e2e3e5;color:#495057}
+.sentiment-row{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.sentiment-card{flex:1;min-width:120px;border-radius:8px;padding:16px 20px;text-align:center}
+.sentiment-card.pos{background:#d4edda}
+.sentiment-card.neg{background:#f8d7da}
+.sentiment-card.neu{background:#e2e3e5}
+.sentiment-card .num{font-size:2rem;font-weight:700;display:block}
+.sentiment-card .lbl{font-size:.85rem;color:#555;margin-top:2px}
+.chart-wrap{max-width:680px;margin:0 auto}
+.suggestion-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.suggestion-card{border:1px solid #e0e0e0;border-radius:8px;padding:16px;position:relative}
+.suggestion-card .action-badge{position:absolute;top:12px;right:12px;background:#c0392b;color:#fff;border-radius:12px;padding:2px 8px;font-size:.75rem}
+.suggestion-card .dish-name{font-size:1rem;font-weight:700;margin-bottom:6px}
+.suggestion-card .price-info{font-size:.85rem;color:#777;margin-bottom:8px}
+.suggestion-card .reason{font-size:.85rem;color:#444;line-height:1.5}
+.priority-高{border-left:4px solid #c0392b}
+.priority-中{border-left:4px solid #e67e22}
+.priority-低{border-left:4px solid #27ae60}
+.markdown-body{font-size:.92rem;line-height:1.8;color:#333}
+.markdown-body h1,.markdown-body h2,.markdown-body h3{color:#c0392b;margin:1em 0 .5em}
+.markdown-body h1{font-size:1.3rem}.markdown-body h2{font-size:1.1rem}.markdown-body h3{font-size:1rem}
+.markdown-body p{margin:.6em 0}
+.markdown-body ul,.markdown-body ol{margin:.5em 0 .5em 1.5em}
+.markdown-body li{margin:.25em 0}
+.markdown-body table{margin:1em 0}
+.markdown-body strong{color:#c0392b}
+.markdown-body blockquote{border-left:3px solid #e0e0e0;padding-left:1em;color:#777;margin:.5em 0}
+.marketing-block{background:#fafafa;border-radius:6px;padding:16px 20px;font-size:.9rem;line-height:1.8;white-space:pre-wrap}
+footer{text-align:center;padding:24px;color:#999;font-size:.82rem}
+@media print{nav.toc{display:none}body{background:#fff}section{box-shadow:none;border:1px solid #eee}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🍜 餐厅智能分析报告</h1>
+  <p>生成时间：{{ generated_at }} &nbsp;|&nbsp; 数据模式：{{ data_mode }}</p>
+</header>
+
+<nav class="toc">
+  <a href="#menu-engineering">📊 菜单分析</a>
+  <a href="#sentiment">💬 情感分析</a>
+  <a href="#competitor">🏪 竞品对比</a>
+  <a href="#suggestions">💡 优化建议</a>
+  <a href="#ai-report">🤖 AI报告</a>
+  <a href="#marketing">📱 营销文案</a>
+</nav>
+
+<main>
+
+<!-- ① 菜单工程分析 -->
+<section id="menu-engineering">
+  <h2>📊 菜单工程分析（波士顿矩阵）</h2>
+
+  <h3>分类汇总</h3>
+  <table>
+    <tr><th>分类</th><th>菜品数</th><th>平均利润率</th><th>平均月点单</th><th>月总利润(元)</th></tr>
+    {% for row in menu_summary_table %}
+    <tr>
+      <td>
+        {% if row.matrix_category == 'Star' %}<span class="badge badge-star">⭐ 明星</span>
+        {% elif row.matrix_category == 'Plow Horse' %}<span class="badge badge-plow">🐎 耕马</span>
+        {% elif row.matrix_category == 'Puzzle' %}<span class="badge badge-puzzle">🧩 谜题</span>
+        {% else %}<span class="badge badge-dog">🐕 瘦狗</span>{% endif %}
+      </td>
+      <td>{{ row.dish_count }}</td>
+      <td>{{ "%.1f"|format(row.avg_margin * 100) }}%</td>
+      <td>{{ "%.0f"|format(row.avg_orders) }}</td>
+      <td>{{ "%.0f"|format(row.total_monthly_profit) }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h3 style="margin-top:20px">菜品明细</h3>
+  <table>
+    <tr><th>菜品</th><th>品类</th><th>定价</th><th>成本</th><th>利润率</th><th>月点单</th><th>矩阵分类</th></tr>
+    {% for row in menu_table %}
+    <tr>
+      <td>{{ row.dish_name }}</td>
+      <td>{{ row.category }}</td>
+      <td>¥{{ row.price }}</td>
+      <td>¥{{ row.cost }}</td>
+      <td>{{ "%.1f"|format(row.profit_margin * 100) }}%</td>
+      <td>{{ row.monthly_orders }}</td>
+      <td>
+        {% if row.matrix_category == 'Star' %}<span class="badge badge-star">⭐ Star</span>
+        {% elif row.matrix_category == 'Plow Horse' %}<span class="badge badge-plow">🐎 Plow</span>
+        {% elif row.matrix_category == 'Puzzle' %}<span class="badge badge-puzzle">🧩 Puzzle</span>
+        {% else %}<span class="badge badge-dog">🐕 Dog</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+
+<!-- ② 情感分析 -->
+<section id="sentiment">
+  <h2>💬 顾客评价情感分析</h2>
+
+  <div class="sentiment-row">
+    <div class="sentiment-card pos">
+      <span class="num">{{ sentiment_counts.positive }}</span>
+      <div class="lbl">✅ 正面</div>
+    </div>
+    <div class="sentiment-card neu">
+      <span class="num">{{ sentiment_counts.neutral }}</span>
+      <div class="lbl">➖ 中性</div>
+    </div>
+    <div class="sentiment-card neg">
+      <span class="num">{{ sentiment_counts.negative }}</span>
+      <div class="lbl">❌ 负面</div>
+    </div>
+  </div>
+
+  <h3>高频主题 TOP {{ top_themes|length }}</h3>
+  <div class="chart-wrap">
+    <canvas id="themesChart" height="260"></canvas>
+  </div>
+</section>
+
+<!-- ③ 竞品对比 -->
+<section id="competitor">
+  <h2>🏪 竞品价格对比</h2>
+
+  <h3>各餐厅定位概览</h3>
+  <table>
+    <tr><th>餐厅</th><th>均价(元)</th><th>平均评分</th><th>月总点单</th><th>菜品数</th></tr>
+    {% for r in comp_by_restaurant %}
+    <tr>
+      <td><strong>{{ r.restaurant_name }}</strong></td>
+      <td>¥{{ r.avg_price }}</td>
+      <td>{{ r.avg_rating }} ⭐</td>
+      <td>{{ r.total_monthly_orders }}</td>
+      <td>{{ r.dish_count }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h3 style="margin-top:20px">品类价格差异（本店 vs 竞品均值）</h3>
+  <table>
+    <tr>
+      <th>品类</th>
+      <th>本店均价</th>
+      <th>竞品均价</th>
+      <th>价差(元)</th>
+      <th>差异%</th>
+    </tr>
+    {% for row in comp_pricing_rows %}
+    <tr>
+      <td>{{ row.category }}</td>
+      <td>¥{{ row.my_avg_price }}</td>
+      <td>¥{{ row.competitor_avg }}</td>
+      <td>
+        {% if row.price_gap != '-' %}
+          {% if row.price_gap|float > 0 %}
+            <span style="color:#c0392b">+{{ row.price_gap }}</span>
+          {% else %}
+            <span style="color:#27ae60">{{ row.price_gap }}</span>
+          {% endif %}
+        {% else %}-{% endif %}
+      </td>
+      <td>
+        {% if row.gap_pct != '-' %}{{ row.gap_pct }}%{% else %}-{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+
+<!-- ④ 优化建议 -->
+<section id="suggestions">
+  <h2>💡 菜单优化建议</h2>
+  <div class="suggestion-grid">
+    {% for s in suggestions %}
+    <div class="suggestion-card priority-{{ s.priority }}">
+      <span class="action-badge">{{ s.action }}</span>
+      <div class="dish-name">{{ s.dish }}</div>
+      <div class="price-info">
+        当前 ¥{{ s.current_price }}
+        {% if s.suggested_price and s.suggested_price != s.current_price %}
+          → 建议 ¥{{ s.suggested_price }}
+        {% endif %}
+        &nbsp;|&nbsp; 优先级：{{ s.priority }}
+      </div>
+      <div class="reason">{{ s.reason }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ⑤ AI 分析报告 -->
+<section id="ai-report">
+  <h2>🤖 AI 综合分析报告</h2>
+  <div class="markdown-body" id="report-content"></div>
+</section>
+
+<!-- ⑥ 营销文案 -->
+<section id="marketing">
+  <h2>📱 营销文案建议</h2>
+  <div class="markdown-body" id="marketing-content"></div>
+</section>
+
+</main>
+
+<footer>由 Claude AI 驱动 &nbsp;·&nbsp; Restaurant Analyzer v0.1 &nbsp;·&nbsp; {{ generated_at }}</footer>
+
+<script>
+// Chart.js — 主题频次条形图
+const themeData = {{ top_themes | tojson }};
+const labels = themeData.map(t => t.theme);
+const values = themeData.map(t => t.count);
+
+new Chart(document.getElementById('themesChart'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [{
+      label: '出现次数',
+      data: values,
+      backgroundColor: 'rgba(192,57,43,0.75)',
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+  }
+});
+
+// Marked.js — render markdown
+const reportMd  = {{ analysis_report_md | tojson }};
+const marketMd  = {{ marketing_copy     | tojson }};
+document.getElementById('report-content').innerHTML   = marked.parse(reportMd);
+document.getElementById('marketing-content').innerHTML = marked.parse(marketMd);
+</script>
+</body>
+</html>
