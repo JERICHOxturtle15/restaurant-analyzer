@@ -4,8 +4,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# API
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+# API — DeepSeek (OpenAI-compatible)
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+
+# 兼容旧代码引用
+ANTHROPIC_API_KEY = DEEPSEEK_API_KEY
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -34,4 +39,4 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 FRONTEND_DIR = BASE_DIR / "frontend"
 
 # Mock flag — True when no API key is configured
-USE_MOCK_API = not bool(ANTHROPIC_API_KEY)
+USE_MOCK_API = not bool(DEEPSEEK_API_KEY)

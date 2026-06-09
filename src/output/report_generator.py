@@ -12,30 +12,32 @@ Replace mock: set ANTHROPIC_API_KEY in .env — USE_MOCK_API flips automatically
 """
 
 import json
-import anthropic
-from config.settings import ANTHROPIC_API_KEY, USE_MOCK_API
+from openai import OpenAI
+from config.settings import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, USE_MOCK_API
 
-_client: anthropic.Anthropic | None = None
+_client: OpenAI | None = None
 
 
-def _get_client() -> anthropic.Anthropic:
+def _get_client() -> OpenAI:
     global _client
     if _client is None:
-        _client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        _client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
     return _client
 
 
 def _stream_text(prompt: str, max_tokens: int = 2048) -> str:
     client = _get_client()
     full = ""
-    with client.messages.stream(
-        model="claude-opus-4-8",
+    stream = client.chat.completions.create(
+        model=DEEPSEEK_MODEL,
         max_tokens=max_tokens,
-        thinking={"type": "adaptive"},
+        stream=True,
         messages=[{"role": "user", "content": prompt}],
-    ) as stream:
-        for text in stream.text_stream:
-            full += text
+    )
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            full += delta
     return full
 
 

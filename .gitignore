@@ -11,3 +11,7 @@ reports/menu_analysis.csv
 reports/menu_summary.csv
 reports/competitor_report.csv
 .DS_Store
+
+# daily intel
+daily_intel/intel.db
+daily_intel/reports/

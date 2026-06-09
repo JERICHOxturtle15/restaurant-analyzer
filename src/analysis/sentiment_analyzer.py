@@ -13,15 +13,15 @@ When USE_MOCK_API is True (no API key), all Claude calls return realistic mock d
 import json
 import re
 import random
-import anthropic
+from openai import OpenAI
 import pandas as pd
 from pathlib import Path
 
-from config.settings import ANTHROPIC_API_KEY, USE_MOCK_API
+from config.settings import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, USE_MOCK_API
 
 _BATCH_SIZE = 10
 
-_client: anthropic.Anthropic | None = None
+_client: OpenAI | None = None
 
 # ── Mock data ─────────────────────────────────────────────────────────────────
 
@@ -68,10 +68,10 @@ def _mock_analyze_reviews(reviews: list[str]) -> list[dict]:
 
 # ── Real API helpers ──────────────────────────────────────────────────────────
 
-def _get_client() -> anthropic.Anthropic:
+def _get_client() -> OpenAI:
     global _client
     if _client is None:
-        _client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        _client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
     return _client
 
 
@@ -108,14 +108,16 @@ def _real_analyze_reviews(reviews: list[str]) -> list[dict]:
         batch = reviews[start: start + _BATCH_SIZE]
         full_text = ""
 
-        with client.messages.stream(
-            model="claude-opus-4-8",
+        stream = client.chat.completions.create(
+            model=DEEPSEEK_MODEL,
             max_tokens=4096,
-            thinking={"type": "adaptive"},
+            stream=True,
             messages=[{"role": "user", "content": _build_batch_prompt(batch)}],
-        ) as stream:
-            for text in stream.text_stream:
-                full_text += text
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                full_text += delta
 
         parsed = _parse_json_array(full_text)
         while len(parsed) < len(batch):
